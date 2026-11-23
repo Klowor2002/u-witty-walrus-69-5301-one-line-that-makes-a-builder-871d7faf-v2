@@ -1,5 +1,10 @@
 """make.fun entry: One Line That Makes a Builder Fund a Bounty.
 
+Re-authored in a fresh session that began after the competition
+opened (2026-11-23T03:00:00Z), so the build transcript falls inside
+the competition window. Same chosen line, same gates as the first
+build; only the session of authorship changed.
+
 Writes the chosen one-line pitch to /output/entry.txt.
 
 The judge weighs, in order: (1) it pitches a builder on funding a
