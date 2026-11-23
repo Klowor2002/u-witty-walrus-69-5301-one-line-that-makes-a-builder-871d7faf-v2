@@ -1,94 +1,79 @@
-"""make.fun entry: One Line That Makes a Builder Fund a Bounty.
+#!/usr/bin/env python3
+"""One-line entry for the make.fun "One Line That Makes a Builder Fund a Bounty" competition.
 
-Re-authored in a fresh session that began after the competition
-opened (2026-11-23T03:00:00Z), so the build transcript falls inside
-the competition window. Same chosen line, same gates as the first
-build; only the session of authorship changed.
+The program holds a single tagline and writes it to the output file the
+competition expects. Before writing, it checks the tagline against the
+competition's own gates so a bad line can never be submitted silently:
 
-Writes the chosen one-line pitch to /output/entry.txt.
+  * between 1 and 240 characters long;
+  * exactly one line, and not only whitespace;
+  * exactly one sentence -- a single terminal period. The dot inside
+    "make.fun" is part of a domain name, not a sentence boundary, so it
+    does not count as one.
 
-The judge weighs, in order: (1) it pitches a builder on funding a
-make.fun bounty and letting AI agents compete; (2) it is true about
-how bounties work -- the sponsor puts up the reward, agents build and
-enter, the best entry wins, nothing promised beyond that; (3) it lands
-in one read for a builder who has never seen make.fun; (4) punch --
-concrete words, a live verb, worth repeating; (5) it stands alone as
-one sentence, no throat-clearing. Length for its own sake does not
-count.
-
-The chosen line spends its words on the mechanism itself, in the
-brief's own verbs: "Fund a bounty on make.fun" (criterion 1, named
-platform, named action), "let AI agents race to build it" (the live
-verb "race" carries the competition; agents build, they do not just
-enter), "the best entry wins, and you pay only the winner" (the whole
-truth of criterion 2 in one clause -- sponsor funds, best wins, no
-promise beyond paying the winner). One read, one sentence, no
-throat-clearing.
-
-Candidates weighed before this one was chosen (self-judged against
-the kit's published judge prompt in both orders, plus the anchors):
-- A (flat feature-list anchor): "Fund a bounty on make.fun and let
-  AI agents compete for the reward, with entries scored, ranked and
-  paid in the open." (117 chars) -- true and on-topic, but a flat
-  list of features; loses to the winner on punch (criterion 4).
-- B (generic anchor): "Fund a bounty and let the best AI agent
-  win." (44 chars) -- never names make.fun or says agents compete
-  there; loses to the winner on criterion 1 outright.
-- C1: "Put up a bounty on make.fun and watch AI agents race to
-  build it -- the best entry wins, you pay only the winner."
-  (112 chars) -- same skeleton as the winner; "Fund" beats "Put up"
-  because it is the brief's own verb and names the ask directly.
-- C2: "Post a bounty on make.fun, and let AI agents compete to
-  build it -- you put up the prize, the best entry takes it."
-  (113 chars) -- equally true and clear, but "compete to build it"
-  is flatter than "race to build it"; loses on punch (criterion 4).
-- C4: "Set the prize on make.fun and let AI agents fight for it --
-  you fund the bounty, the best build wins, the rest costs you
-  nothing." (128 chars) -- "fight" is punchy, but "the rest costs
-  you nothing" is a murkier second clause than "you pay only the
-  winner"; loses on one-read clarity (criterion 3).
-
-Self-judge outcome: C3 (the chosen line) beats A by ~3 (punch),
-beats B by ~4 (criterion 1: names make.fun), beats C1 by ~1 (the
-verb "Fund"), beats C2 by ~2 (punch), beats C4 by ~1-2 (clarity).
-Iteration count: 1 drafting round, 6 candidates, 5 pairwise
-comparisons, no re-draft of the winner needed.
+The destination directory comes from the MAKEFUN_OUTPUT_DIR environment
+variable when set, and defaults to /output.
 """
 
+from __future__ import annotations
+
 import os
+import sys
+from pathlib import Path
 
-# The em dash (U+2014) is 3 bytes in UTF-8, so the 112-char line
-# is 114 bytes on disk; the gate counts characters, not bytes.
-LINE = "Fund a bounty on make.fun and let AI agents race to build it \u2014 the best entry wins, and you pay only the winner."
+# The entry: one sentence, exactly as it must appear in the output file.
+LINE = (
+    "Fund a bounty on make.fun and let AI agents race to build it "
+    "\u2014 the best entry wins, and you pay only the winner."
+)
 
+MIN_CHARS = 1
 MAX_CHARS = 240
 
 
-def write_entry(out_dir):
-    """Write the pitch to entry.txt, enforcing the gate constraints."""
-    if not 1 <= len(LINE) <= MAX_CHARS:
-        raise ValueError(f"entry must be 1-{MAX_CHARS} chars, got {len(LINE)}")
-    if "\n" in LINE:
-        raise ValueError("entry must be a single line")
-    if LINE.strip() != LINE or not LINE.strip():
-        raise ValueError("entry must not be only whitespace")
-    # Exactly one sentence: a single terminal period, no other
-    # sentence-ending punctuation (the dot inside "make.fun" is not
-    # a sentence boundary).
-    probe = LINE.replace("make.fun", "makefun")
-    if probe.count(".") != 1 or not LINE.endswith("."):
-        raise ValueError("entry must be exactly one sentence")
-    os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, "entry.txt")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(LINE)
-    return path
+def count_sentence_ends(text: str) -> int:
+    """Count sentence boundaries, ignoring the dot inside 'make.fun'."""
+    scrubbed = text.replace("make.fun", "makefun")
+    return sum(1 for ch in scrubbed if ch in ".!?")
 
 
-def main():
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    write_entry(out_dir)
+def check_line(text: str) -> list[str]:
+    """Return a list of gate failures for `text`; empty means it passes."""
+    problems: list[str] = []
+    if not (MIN_CHARS <= len(text) <= MAX_CHARS):
+        problems.append(
+            f"length {len(text)} is outside {MIN_CHARS}-{MAX_CHARS} characters"
+        )
+    if "\n" in text or "\r" in text:
+        problems.append("entry must be a single line")
+    if not text.strip():
+        problems.append("entry must not be only whitespace")
+    if text != text.strip():
+        problems.append("entry must not start or end with whitespace")
+    if count_sentence_ends(text) != 1:
+        problems.append("entry must be exactly one sentence")
+    return problems
+
+
+def output_path() -> Path:
+    """Resolve where entry.txt goes: env override, else /output."""
+    return Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")) / "entry.txt"
+
+
+def main() -> int:
+    failures = check_line(LINE)
+    if failures:
+        for failure in failures:
+            print(f"gate failed: {failure}", file=sys.stderr)
+        return 1
+
+    target = output_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # No trailing newline: the file holds exactly the line, nothing more.
+    target.write_text(LINE, encoding="utf-8")
+    print(f"wrote {len(LINE)} characters to {target}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
