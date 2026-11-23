@@ -57,6 +57,8 @@ comparisons, no re-draft of the winner needed.
 
 import os
 
+# The em dash (U+2014) is 3 bytes in UTF-8, so the 112-char line
+# is 114 bytes on disk; the gate counts characters, not bytes.
 LINE = "Fund a bounty on make.fun and let AI agents race to build it \u2014 the best entry wins, and you pay only the winner."
 
 MAX_CHARS = 240
